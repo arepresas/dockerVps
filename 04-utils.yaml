@@ -1,0 +1,61 @@
+version: '3.7'
+services:
+  vaultwarden:
+    container_name: vaultwarden
+    image: vaultwarden/server
+    volumes:
+      - ./${VAULWARDEN_FOLDER}:/data
+    restart: unless-stopped
+
+  netdata:
+    container_name: netdata
+    image: netdata/netdata
+    hostname: ${NETDATA_MAIN_HOSTNAME} # set to fqdn of host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    restart: unless-stopped
+
+  openspeedtest:
+    container_name: openspeedtest
+    image: openspeedtest/latest
+    restart: unless-stopped
+
+  cloudcommander:
+    container_name: cloudcommander
+    image: coderaiser/cloudcmd
+    volumes:
+      - ~:/root
+      - /:/mnt/fs
+    restart: unless-stopped
+
+  firefox:
+    container_name: firefox
+    image: lscr.io/linuxserver/firefox
+    user: root
+    environment:
+      TZ: ${TZ}
+    shm_size: 2gb
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./${OTHERS_FOLDER}/firefox/config:/config
+    restart: unless-stopped
+
+  filebrowser:
+    container_name: filebrowser
+    image: filebrowser/filebrowser
+    user: root
+    environment:
+      TZ: ${TZ}
+    shm_size: 2gb
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./:/srv
+    restart: unless-stopped

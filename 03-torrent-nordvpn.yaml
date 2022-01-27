@@ -1,0 +1,55 @@
+version: '3.7'
+services:
+  nordvpn:
+    image: ghcr.io/bubuntux/nordvpn
+    container_name: nordvpn
+    cap_add:
+      - NET_ADMIN               # Required
+      - SYS_MODULE              # Required for TECHNOLOGY=NordLynx
+      - NET_RAW                 # Required
+#    devices:
+#      - /dev/net/tun            # Required
+    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
+      - USER=${VPN_USER}
+      - PASS=${VPN_PASS}
+      - CONNECT=${VPN_COUNTRY}
+      - TECHNOLOGY=NordLynx
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1  # Recommended if using ipv4 only
+    extra_hosts:
+      - "w569ut7zbkiqf5b.xyz:104.28.28.105"
+      - "zwyr157wwiu6eior.com:104.17.188.107"
+      - "boi9osyg1uwtyafn.com:104.16.229.42"
+    restart: unless-stopped
+
+  web-torrent:
+    image: dperson/nginx        # https://github.com/dperson/nginx
+    container_name: web-torrent
+    links:
+      - nordvpn:torrent
+    depends_on:
+      - torrent
+    tmpfs:
+      - /run
+      - /tmp
+      - /var/cache/nginx
+    command: -w "http://torrent:9091/;/"
+    restart: unless-stopped
+
+  torrent:
+    image: linuxserver/qbittorrent
+    container_name: torrent
+    user: root
+    network_mode: service:nordvpn
+    depends_on:
+      - nordvpn
+    environment:
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+      - WEBUI_PORT=9091
+    volumes:
+      - ./${TORRENT_FOLDER}/config:/config
+      - ./${TORRENT_FOLDER}/downloads:/downloads
+      - ./${TORRENT_FOLDER}/incomplete:/incomplete
+      - ./${TORRENT_FOLDER}/torrents:/torrents
+    restart: unless-stopped

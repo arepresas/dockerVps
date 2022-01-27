@@ -1,0 +1,16 @@
+version: '3.7'
+services:
+  jellyfin:
+    container_name: jellyfin
+    image: jellyfin/jellyfin
+    user: root
+    # network_mode: "host" # Optional to activate DLNA
+    volumes:
+      - ./${JELLYFIN_FOLDER}/config:/config
+      - ./${JELLYFIN_FOLDER}/cache:/cache
+      - ./${JELLYFIN_MEDIA_FOLDER}:/media
+#    ports:
+#      - '4180:8096/tcp'
+    environment:
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_HOSTNAME}
+    restart: unless-stopped

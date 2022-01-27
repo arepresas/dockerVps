@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./${AUTOMATION_FOLDER}/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    privileged: true
+    networks:
+      - default
+      - vpn-net
+    restart: unless-stopped

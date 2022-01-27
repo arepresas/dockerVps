@@ -1,0 +1,68 @@
+version: '3.7'
+services:
+  proxy-manager:
+    container_name: proxy-manager
+    image: 'jc21/nginx-proxy-manager:latest'
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./${PROXY_FOLDER}/data:/data
+      - ./${PROXY_FOLDER}/letsencrypt:/etc/letsencrypt
+    restart: always
+
+  heimdall:
+    container_name: heimdall
+    image: linuxserver/heimdall
+    user: root
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./${HEIMDALL_FOLDER}/config:/config
+    restart: always
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./${PORTAINER_FOLDER}/volumes:/var/lib/docker/volumes
+    restart: always
+
+  watchtower:
+    container_name: watchtower
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30
+    restart: always
+
+  shellinabox:
+    container_name: shellinabox
+    # image: sspreitzer/shellinabox:latest        # amd64
+    image: sbonnell/arm32v7-shellinabox:latest  # arm64
+    environment:
+      SIAB_USER: ${SIAB_USER}
+      SIAB_PASSWORD: ${SIAB_PASS}
+      SIAB_SUDO: 'true'
+      SIAB_SSL: 'false'
+    restart: unless-stopped
+
+  glances:
+    container_name: glances
+    image: nicolargo/glances:latest
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - "GLANCES_OPT=-w"
+    restart: unless-stopped
+
+  searxng:
+    container_name: searxng
+    image: searxng/searxng:latest
+    restart: always
+    volumes:
+      - ./${OTHERS_FOLDER}/searxng:/etc/searxng:rw
