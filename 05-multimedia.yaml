@@ -1,0 +1,65 @@
+version: '3.7'
+services:
+  jellyfin:
+    container_name: jellyfin
+    image: jellyfin/jellyfin
+    user: root
+    # network_mode: "host" # Optional to activate DLNA
+    volumes:
+      - ./${JELLYFIN_FOLDER}/config:/config
+      - ./${JELLYFIN_FOLDER}/cache:/cache
+      - ./${JELLYFIN_MEDIA_FOLDER}:/media
+    environment:
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_HOSTNAME}
+    restart: unless-stopped
+
+  piwigo:
+    image: linuxserver/piwigo:latest
+    container_name: piwigo
+    user: root
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./${PIWIGO_FOLDER}/appdata/config>:/config
+      - ./${PIWIGO_FOLDER}/gallery:/gallery
+    restart: unless-stopped
+
+  piwigo_db:
+    image: mariadb:latest
+    container_name: piwigo_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${PIWIGO_DB_ROOT_PASS}
+      - MYSQL_DATABASE=${PIWIGO_DATABASE}
+      - MYSQL_USER=${PIWIGO_DB_USER}
+      - MYSQL_PASSWORD=${PIWIGO_DB_PASS}
+    volumes:
+      - ./${PIWIGO_FOLDER}/mysql/:/var/lib/mysql
+    restart: unless-stopped
+
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    environment:
+      # Optional: put your config options customization here. Examples:
+      ND_SCANSCHEDULE: 1h
+      ND_LOGLEVEL: info
+      ND_BASEURL: ""
+    volumes:
+      - ./${OTHERS_FOLDER}/navidrome/data/:/data
+      - ./${RCLONE_DATA_FOLDER}/Music/:/music:ro
+    restart: unless-stopped
+
+  ubooquity:
+    image: linuxserver/ubooquity:latest
+    container_name: ubooquity
+    user: root
+    environment:
+      - TZ=${TZ}
+      - MAXMEM=4096
+    volumes:
+      - ./${OTHERS_FOLDER}/ubooquity/:/config
+      - ./${RCLONE_DATA_FOLDER}/Books/Epub:/books
+      - ./${RCLONE_DATA_FOLDER}/Books/Comics:/comics
+      - ./${RCLONE_DATA_FOLDER}/Books/Pdf:/pdf
+      - ./${RCLONE_DATA_FOLDER}/Formation:/formation
+    restart: unless-stopped

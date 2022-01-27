@@ -1,0 +1,27 @@
+version: '3.7'
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant
+    volumes:
+      - ./${HOME_ASSISTANT_FOLDER}/config:/config
+      - /etc/localtime:/etc/localtime:ro
+    privileged: true
+    networks:
+      - default
+      - vpn-net
+    ports:
+      - "8123:8123"
+    restart: unless-stopped
+
+# docker build https://github.com/bokub/ha-linky.git -f standalone.Dockerfile -t ha-linky
+
+  ha-linky:
+    container_name: ha-linky
+    image: overlag/ha-linky
+    environment:
+      - SUPERVISOR_TOKEN=${HOME_ASSISTANT_LINKY_TOKEN}
+      - WS_URL=wss://homeassistant.arepresas.stream/api/websocket
+      - TZ=${TZ}
+    volumes:
+      - ./${HOME_ASSISTANT_FOLDER}/linky:/data
