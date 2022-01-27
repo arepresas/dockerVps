@@ -1,0 +1,48 @@
+version: '3.7'
+services:
+  crypto-tracker-db:
+    container_name: crypto-tracker-db
+    image: postgres:14.2-alpine3.15
+    user: root
+    environment:
+      POSTGRES_DB: cryptotracker-db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+      - ./${CRYPTO_TRACKER_FOLDER}/db/data:/var/lib/postgresql/data
+      - ./${CRYPTO_TRACKER_FOLDER}/db/dump:/docker-entrypoint-initdb.d/
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    user: root
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${CRYPTO_TRACKER_PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${CRYPTO_TRACKER_PGADMIN_PASSWORD}
+      PGADMIN_LISTEN_PORT: 80
+    volumes:
+      - ./${CRYPTO_TRACKER_FOLDER}/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - crypto-tracker-db
+    restart: unless-stopped
+
+  crypto-tracker-back:
+    container_name: crypto-tracker-back
+    image: overlag/crypto-tracker
+    depends_on:
+      - crypto-tracker-db
+    environment:
+      TZ: ${TZ}
+      SPRING_PROFILES_ACTIVE: dev,debug
+      coinMarket.api.key: ${CRYPTO_TRACKER_COIN_MARKET_API_KEY}
+    ports:
+      - '8700:8700'
+    restart: unless-stopped
+
+  crypto-tracker-front:
+    container_name: crypto-tracker-front
+    image: overlag/crypto-tracker-front
+    depends_on:
+      - crypto-tracker-back
+    restart: unless-stopped

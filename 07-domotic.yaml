@@ -1,0 +1,15 @@
+version: '3.7'
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant
+    volumes:
+      - ./${AUTOMATION_FOLDER}/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    privileged: true
+    networks:
+      - default
+      - vpn-net
+    ports:
+      - 8132:8132
+    restart: unless-stopped

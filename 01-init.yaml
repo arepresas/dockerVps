@@ -1,0 +1,84 @@
+version: '3.7'
+services:
+  proxy-manager:
+    container_name: proxy-manager
+    image: 'jc21/nginx-proxy-manager:latest'
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./${PROXY_FOLDER}/data:/data
+      - ./${PROXY_FOLDER}/letsencrypt:/etc/letsencrypt
+    restart: always
+
+  heimdall:
+    container_name: heimdall
+    image: linuxserver/heimdall
+    user: root
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./${HEIMDALL_FOLDER}/config:/config
+    restart: always
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./${PORTAINER_FOLDER}/data:/data
+      - ./${PORTAINER_FOLDER}/volumes:/var/lib/docker/volumes
+    restart: always
+
+  watchtower:
+    container_name: watchtower
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./${WATCHTOWER_FOLDER}/config.json:/config.json # File has to exist in host, otherwise a directory will be created
+    command: --interval 30
+    restart: always
+
+  duplicati:
+    image: linuxserver/duplicati:latest
+    container_name: duplicati
+    user: root
+    environment:
+      - TZ=${TZ}
+      # Optional
+      # - CLI_ARGS=
+    volumes:
+      - ./${DUPLICATI_FOLDER}/config:/config
+      - ./${DUPLICATI_FOLDER}/backups:/backups
+      - ./:/source
+    restart: unless-stopped
+
+  shellinabox:
+    container_name: shellinabox
+    image: sspreitzer/shellinabox:latest
+    environment:
+      SIAB_USER: ${SIAB_USER}
+      SIAB_PASSWORD: ${SIAB_PASS}
+      SIAB_SUDO: 'true'
+      SIAB_SSL: 'false'
+    restart: unless-stopped
+
+  glances:
+    container_name: glances
+    image: nicolargo/glances:latest
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - "GLANCES_OPT=-w"
+    restart: unless-stopped
+
+  searxng:
+    container_name: searxng
+    image: searxng/searxng:latest
+    volumes:
+      - ./${OTHERS_FOLDER}/searxng:/etc/searxng:rw
+    restart: always

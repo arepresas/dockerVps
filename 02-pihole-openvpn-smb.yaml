@@ -1,0 +1,118 @@
+version: '3.7'
+services:
+  openvpn:
+    container_name: openvpn
+    image: land007/openvpn
+    user: root
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - '1194:1194/udp'
+      - '1194:1194/tcp'
+
+    # network_mode: host
+    environment:
+      #  - VIRTUAL_PORT=${VIRTUAL_PORT_OPENVPN}
+      #  - VIRTUAL_HOST=${VIRTUAL_HOST_OPENVPN}
+      #  - LETSENCRYPT_HOST=${LETSENCRYPT_HOST_VPN}
+      #  - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      #  - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
+      #  - OPENVPN_USERNAME=${OPENVPN_USERNAME}
+      #  - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      #  - LOCAL_NETWORK=192.168.0.0/24
+      OPENVPN_OPTS: --inactive 3600 --ping 10 --ping-exit 60 -   ^`^slog-driver json-file --log-opt max-size=10m
+    volumes:
+      - ./${OPENVPN_FOLDER}:/etc/openvpn
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      vpn-net:
+        ipv4_address: ${OPENVPN_IP}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+
+  openvpn_monitor:
+    container_name: openvpn_monitor
+    image: ruimarinho/openvpn-monitor
+    environment:
+      # General
+      OPENVPNMONITOR_DEFAULT_DATETIMEFORMAT: "%d/%m/%Y %H:%M:%S"
+#      OPENVPNMONITOR_DEFAULT_LOGO:
+      OPENVPNMONITOR_DEFAULT_MAPS: "True"
+      OPENVPNMONITOR_DEFAULT_LATITUDE: "0.0"
+      OPENVPNMONITOR_DEFAULT_LONGITUDE: "0.0"
+      OPENVPNMONITOR_DEFAULT_SITE: Live
+      # Site 1 - OpenVPN1
+      OPENVPNMONITOR_SITES_0_ALIAS: OVPN1
+      OPENVPNMONITOR_SITES_0_HOST: openvpn
+      OPENVPNMONITOR_SITES_0_NAME: OPENVPN1
+      OPENVPNMONITOR_SITES_0_PORT: 5555
+    networks:
+      - default
+      - vpn-net
+    restart: unless-stopped
+    # Edit the openvpn.conf file and add the following directive (choose port 5555 or any other of your preference):
+    # management 0.0.0.0 5555
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole
+    user: root
+    cap_add:
+      - NET_ADMIN
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    depends_on:
+      - openvpn
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${PIHOLE_PWD}
+      ServerIp: ${PIHOLE_IP}
+      IPv6: 'false'
+    volumes:
+      - ./${PIHOLE_FOLDER}/conf:/etc/pihole
+      - ./${PIHOLE_FOLDER}/dnsmasq.d:/etc/dnsmasq.d
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      vpn-net:
+        ipv4_address: ${PIHOLE_IP}
+    restart: always
+
+  samba:
+    container_name: samba
+    image: dperson/samba
+    user: root
+    environment:
+      TZ: ${TZ}
+      NMBD: 'true'
+      USER: ${SAMBA_USER_PASS}
+      SHARE1: ${SAMBA_SHARE1}
+      SHARE2: ${SAMBA_SHARE2}
+      WORKGROUP: ${SAMBA_WORKGROUP}
+    stdin_open: true
+    tty: true
+    read_only: false
+    volumes:
+      - ${SAMBA_FOLDER}:/Samba
+    networks:
+      vpn-net:
+        ipv4_address: ${SAMBA_IP}
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+networks:
+  vpn-net:
+    external: true
+
+# docker network create --driver=bridge --subnet=172.20.0.0/24 --gateway=172.20.0.1 vpn-net
+# docker-compose -f 02-pihole-openvpn-smb.yaml run --rm openvpn ovpn_genconfig -u udp://VPN.SERVERNAME.COM
+# docker-compose -f 02-pihole-openvpn-smb.yaml run --rm openvpn ovpn_initpki
+# docker-compose -f 02-pihole-openvpn-smb.yaml run --rm openvpn easyrsa build-client-full CLIENTNAME
+# docker-compose -f 02-pihole-openvpn-smb.yaml run --rm openvpn ovpn_getclient CLIENTNAME > CLIENTNAME.OVPN

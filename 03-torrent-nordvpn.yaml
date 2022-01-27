@@ -1,0 +1,99 @@
+version: '3.7'
+services:
+
+####### Get PrivateKey #############################################################################################
+#                                                                                                                 #
+# docker run --rm --cap-add=NET_ADMIN -e USER=XXX -e PASS=YYY bubuntux/nordvpn:get_private_key                    #
+#                                                                                                                 #
+####################################################################################################################
+
+####### DEPRECATED #######
+#
+#  nordvpn:
+#    image: ghcr.io/bubuntux/nordvpn
+#    container_name: nordvpn
+#    cap_add:
+#      - NET_ADMIN               # Required
+#      - SYS_MODULE              # Required for TECHNOLOGY=NordLynx
+#      - NET_RAW                 # Required
+#    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
+#      - TOKEN=${VPN_TOKEN}
+#      - CONNECT=${VPN_COUNTRY}
+#      - TECHNOLOGY=NordLynx
+#    ports:
+#      - "4662:4662"
+#      - "4665:4665"
+#      - "4672:4672"
+#    sysctls:
+#      - net.ipv6.conf.all.disable_ipv6=1  # Recommended if using ipv4 only
+#    extra_hosts:
+#      - "w569ut7zbkiqf5b.xyz:104.28.28.105"
+#      - "zwyr157wwiu6eior.com:104.17.188.107"
+#      - "boi9osyg1uwtyafn.com:104.16.229.42"
+#    restart: unless-stopped
+#
+####### DEPRECATED #######
+
+  nordvpn:
+    image: bubuntux/nordlynx
+    container_name: nordvpn
+    cap_add:
+      - NET_ADMIN #required
+    environment:
+      - PRIVATE_KEY=${VPN_PRIVATE_KEY} #required
+      - QUERY=filters\[country_id\]=179 #Romania
+      - ALLOWED_IPS=0.0.0.0/0
+      - PORTS=4711;4712;4662;4663;4664;4665;4672;6584;9091
+    ports:
+      - "4711:4711" #Amule GUI port
+      - "9091:9091" #QBittorrent GUI port
+      - "4712:4712"
+      - "4662:4662"
+      - "4663:4663"
+      - "4664:4664"
+      - "4665:4665/udp"
+      - "4672:4672/udp"
+      - "6584:6584"
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1 #Disable IPv6
+    restart: always
+
+  torrent:
+    image: linuxserver/qbittorrent
+    container_name: torrent
+    user: root
+    network_mode: service:nordvpn
+    depends_on:
+      - nordvpn
+    environment:
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+      - WEBUI_PORT=9091
+    volumes:
+      - ./${TORRENT_FOLDER}/config:/config
+      - ./${TORRENT_FOLDER}/downloads:/downloads
+      - ./${TORRENT_FOLDER}/incomplete:/incomplete
+      - ./${TORRENT_FOLDER}/torrents:/torrents
+    restart: unless-stopped
+
+  emule:
+    image: ngosang/amule
+    container_name: emule
+    user: root
+    network_mode: service:nordvpn
+    depends_on:
+      - nordvpn
+    environment:
+      - TZ=${TZ}
+      - GUI_PWD=${AMULE_PASSWORD}
+      - WEBUI_PWD=${AMULE_PASSWORD}
+      - MOD_AUTO_RESTART_ENABLED=true
+      - MOD_AUTO_RESTART_CRON=0 6 * * *
+      - MOD_AUTO_SHARE_ENABLED=false
+      - MOD_AUTO_SHARE_DIRECTORIES=/incoming;/my_movies
+      - MOD_FIX_KAD_GRAPH_ENABLED=true
+    volumes:
+      - ./${AMULE_FOLDER}/conf/:/home/amule/.aMule
+      - ./${AMULE_FOLDER}/incoming/:/incoming
+      - ./${AMULE_FOLDER}/temp/:/temp
+    restart: unless-stopped

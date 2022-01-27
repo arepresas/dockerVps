@@ -1,0 +1,119 @@
+version: '3.7'
+services:
+  vaultwarden:
+    container_name: vaultwarden
+    image: vaultwarden/server
+    volumes:
+      - ./${VAULWARDEN_FOLDER}:/data
+    restart: always
+
+  netdata:
+    container_name: netdata
+    image: netdata/netdata
+    hostname: ${NETDATA_MAIN_HOSTNAME} # set to fqdn of host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    restart: unless-stopped
+
+  openspeedtest:
+    container_name: openspeedtest
+    image: openspeedtest/latest
+    restart: unless-stopped
+
+  cloudcommander:
+    container_name: cloudcommander
+    image: coderaiser/cloudcmd
+    volumes:
+      - ~:/root
+      - /:/mnt/fs
+    restart: unless-stopped
+
+  firefox:
+    container_name: firefox
+    image: lscr.io/linuxserver/firefox:latest
+    user: root
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      TZ: ${TZ}
+      PUID: 1000
+      PGID: 1000
+      CUSTOM_USER: firefox
+      PASSWORD: firefox
+      TITLE: Firefox Container
+    ports:
+      - 3000:3000
+      - 3001:3001
+    shm_size: 2gb
+    volumes:
+      - ./${OTHERS_FOLDER}/firefox/config:/config
+    restart: unless-stopped
+
+  filebrowser:
+    container_name: filebrowser
+    image: filebrowser/filebrowser
+    user: root
+    environment:
+      TZ: ${TZ}
+    shm_size: 2gb
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./:/srv
+    restart: unless-stopped
+
+  rdesktop:
+    image: docker.io/hectorm/xubuntu:latest
+    container_name: rdesktop
+    security_opt:
+      - seccomp:unconfined #optional
+    user: root
+    environment:
+      - TZ=${TZ}
+      - UNPRIVILEGED_USER_NAME=${RDESKTOP_USER}
+      - UNPRIVILEGED_USER_PASSWORD=${RDESKTOP_PASSWORD}
+      - UNPRIVILEGED_USER_GROUPS=sudo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock #optional
+      - ./${OTHERS_FOLDER}/rdesktop2 :/config #optional
+    devices:
+      - /dev/dri:/dev/dri #optional
+    ports:
+      - '3389:3389'
+    shm_size: "8gb" #optional
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false" #Disable watchtower no not lose changes
+    restart: always
+
+  vscode:
+    image: linuxserver/code-server:latest
+    container_name: vscode
+    user: root
+    environment:
+      - TZ=${TZ}
+      - PASSWORD=${VSCODE_PASSWORD} #optional
+      - HASHED_PASSWORD= #optional
+      - SUDO_PASSWORD=${VSCODE_PASSWORD} #optional
+      - SUDO_PASSWORD_HASH= #optional
+#      - PROXY_DOMAIN=code-server.my.domain #optional
+#      - DEFAULT_WORKSPACE=/project #optional
+    volumes:
+      - ./${VSCODE_FOLDER}/config:/config
+      - ./${VSCODE_FOLDER}/projects:/projects
+    restart: unless-stopped
+
+  freshrss:
+    image: lscr.io/linuxserver/freshrss:latest
+    container_name: freshrss
+    user: root
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./${FRESHRSS_FOLDER}/data:/config
+    restart: unless-stopped
