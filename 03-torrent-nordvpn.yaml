@@ -7,46 +7,24 @@ services:
 #                                                                                                                 #
 ####################################################################################################################
 
-####### DEPRECATED #######
-#
-#  nordvpn:
-#    image: ghcr.io/bubuntux/nordvpn
-#    container_name: nordvpn
-#    cap_add:
-#      - NET_ADMIN               # Required
-#      - SYS_MODULE              # Required for TECHNOLOGY=NordLynx
-#      - NET_RAW                 # Required
-#    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
-#      - TOKEN=${VPN_TOKEN}
-#      - CONNECT=${VPN_COUNTRY}
-#      - TECHNOLOGY=NordLynx
-#    ports:
-#      - "4662:4662"
-#      - "4665:4665"
-#      - "4672:4672"
-#    sysctls:
-#      - net.ipv6.conf.all.disable_ipv6=1  # Recommended if using ipv4 only
-#    extra_hosts:
-#      - "w569ut7zbkiqf5b.xyz:104.28.28.105"
-#      - "zwyr157wwiu6eior.com:104.17.188.107"
-#      - "boi9osyg1uwtyafn.com:104.16.229.42"
-#    restart: unless-stopped
-#
-####### DEPRECATED #######
-
   nordvpn:
-    image: bubuntux/nordlynx
+    image: bubuntux/nordlynx:2024-12-31
     container_name: nordvpn
     cap_add:
       - NET_ADMIN #required
     environment:
       - PRIVATE_KEY=${VPN_PRIVATE_KEY} #required
-      - QUERY=filters\[country_id\]=179 #Romania
+      # curl --silent "https://api.nordvpn.com/v1/servers/countries" | jq --raw-output '.[] | [.id, .name] | @tsv'
+      - QUERY=filters\[country_id\]=2&filters\[servers_groups\]\[identifier\]=legacy_p2p # Albania
+      # Allow all IPs
       - ALLOWED_IPS=0.0.0.0/0
-      - PORTS=4711;4712;4662;4663;4664;4665;4672;6584;9091
+      # A semicolon-separated list of ports to open in the container's firewall.
+      - PORTS=4711;4712;4662;4663;4664;4665;4672;6584;9091;6881
     ports:
       - "4711:4711" #Amule GUI port
       - "9091:9091" #QBittorrent GUI port
+      - "6881:6881" #QBittorrent connection port TCP
+      - "6881:6881/udp" #QBittorrent connection port UDP
       - "4712:4712"
       - "4662:4662"
       - "4663:4663"
@@ -74,6 +52,7 @@ services:
       - ./${TORRENT_FOLDER}/downloads:/downloads
       - ./${TORRENT_FOLDER}/incomplete:/incomplete
       - ./${TORRENT_FOLDER}/torrents:/torrents
+      - ./torrent-init.sh:/etc/cont-init.d/99-vuetorrent # Use AlternativeUI in /config/qBittorrent/vuetorrent
     restart: unless-stopped
 
   emule:

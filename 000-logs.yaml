@@ -1,0 +1,74 @@
+version: '3.7'
+services:
+  mongodb:
+    image: mongo:7.0.16
+    container_name: mongodb_graylog
+    hostname: mongodb
+    volumes:
+      - mongo_db_data:/data/db
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: opensearch_graylog
+    hostname: opensearch
+    volumes:
+      - es_data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200/tcp
+    environment:
+      - "discovery.type=single-node"
+      - "bootstrap.memory_lock=true"
+      - "OPENSEARCH_JAVA_OPTS=-Xms8g -Xmx8g"
+      - "action.auto_create_index=false"
+      - "plugins.security.ssl.http.enabled=false"
+      - "plugins.security.disabled=true"
+      # Can generate a password for `OPENSEARCH_INITIAL_ADMIN_PASSWORD` using a linux device via
+      # tr -dc A-Z-a-z-0-9_@#%^-_=+  devurandom  head -c${1-32}
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=Chocolate1-Strawberry-Opacity-Lemon"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  graylog:
+    image: graylog/graylog:6.1.2
+    container_name: graylog
+    hostname: graylog-1
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+      - ./csv:/srv
+    environment:
+      # CHANGE ME (must be at least 16 characters)!
+      GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD}
+      # To change password: echo -n "Enter Password: " && head -1 < /dev/stdin | tr -d '\n' | sha256sum | cut -d " " -f1
+      GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2}
+      GRAYLOG_ELASTICSEARCH_HOSTS: "http://opensearch:9200"
+      GRAYLOG_HTTP_EXTERNAL_URI: "http://localhost:9000/"
+      GRAYLOG_MONGODB_URI: "mongodb://mongodb:27017/graylog"
+    entrypoint: /usr/bin/tini -- wait-for-it opensearch:9200 --  /docker-entrypoint.sh
+    restart: always
+    depends_on:
+      - mongodb
+      - opensearch
+    ports:
+      - "5044:5044/tcp"   # Beats
+      - "5140:5140/udp"   # Syslog
+      - "5140:5140/tcp"   # Syslog
+      - "5555:5555/tcp"   # RAW TCP
+      - "5555:5555/udp"   # RAW TCP
+      - "9000:9000/tcp"   # Server API
+      - "12201:12201/tcp" # GELF TCP
+      - "12201:12201/udp" # GELF UDP
+      - "13301:13301/tcp" # Forwarder data
+      - "13302:13302/tcp" # Forwarder config
+
+volumes:
+  mongo_db_data:
+    driver: local
+  es_data:
+    driver: local
+  graylog_data:
+    driver: local
