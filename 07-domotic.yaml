@@ -7,11 +7,8 @@ services:
       - ./${HOME_ASSISTANT_FOLDER}/config:/config
       - /etc/localtime:/etc/localtime:ro
     privileged: true
-    networks:
-      - default
-      - vpn-net
     ports:
-      - "8123:8123"
+      - "80:8123"
     restart: unless-stopped
 
 # docker build https://github.com/bokub/ha-linky.git -f standalone.Dockerfile -t ha-linky
