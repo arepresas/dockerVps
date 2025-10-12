@@ -24,6 +24,39 @@ services:
     command: ['mount','--allow-non-empty','gdrive:','/mnt']
     restart: unless-stopped
 
+  rclone-gdrive-new:
+    image: rclone/rclone
+    container_name: rclone-gdrive-new
+    user: root
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    security_opt:
+      - "apparmor:unconfined"
+    environment:
+      - RCLONE_ALLOW_OTHER=true
+      - RCLONE_VERBOSE=2
+      - TZ=${TZ}
+    volumes:
+      - ./${RCLONE_FOLDER_NEW}:/config/rclone
+      - type: bind
+        source: ./${RCLONE_DATA_FOLDER_NEW}
+        target: /mnt
+        bind:
+          propagation: shared
+    command: >
+      mount newGoogleDrive: /mnt
+      --allow-non-empty
+      --buffer-size=128M
+      --dir-cache-time=12h
+      --vfs-cache-mode=full
+      --vfs-cache-max-size=2G
+      --vfs-cache-max-age=6h
+      --vfs-read-chunk-size=64M
+      --vfs-read-chunk-size-limit=1G
+    restart: unless-stopped
+
 #  docker run --rm -it --volume RCLONE_FOLDER:/config/rclone --volume DATA_FOLDER:/data --user $(id -u):$(id -g) rclone/rclone config
 
   rclone-onedrive:
